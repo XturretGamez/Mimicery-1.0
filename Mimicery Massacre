@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mimicery DEMO 0.2</title>
+<style>
+body {
+  margin: 0;
+  height: 100vh;
+  background: #000;
+  font-family: monospace;
+  color: #fff;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+button {
+  background: none;
+  border: 1px solid #0f0;
+  color: #0f0;
+  padding: 10px 30px;
+  cursor: pointer;
+  font-size: 1.2rem;
+  margin: 5px;
+}
+button:hover { background: #0f0; color: #000; }
+.images {
+  display: flex;
+  justify-content: center;
+  gap: 30px;
+  margin-top: 20px;
+}
+.images img {
+  width: 220px;
+  height: 220px;
+  object-fit: cover;
+  border: 2px solid #0f0;
+  cursor: pointer;
+  filter: grayscale(100%);
+  transition: 0.3s;
+}
+.images img:hover { filter: grayscale(0%) brightness(1.3); transform: scale(1.05);}
+.hidden { display: none; }
+#introVideo {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  object-fit: cover;
+  z-index: 10;
+  background: #000;
+}
+#skipBtn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  border: 1px solid #0f0;
+  background: none;
+  color: #0f0;
+  padding: 10px 20px;
+  cursor: pointer;
+  font-family: monospace;
+  font-size: 1rem;
+  z-index: 11;
+}
+#skipBtn:hover { background: #0f0; color: #000; }
+#menu h1 { color: red; }
+#menu h4, #menu h2 { color: white; }
+#storyText { color: white; }
+</style>
+</head>
+<body>
+
+<div id="menu">
+  <h1>MIMICERY</h1>
+  <button onclick="startGame()">START GAME</button>
+  <button onclick="showCredits()">CREDITS</button>
+  <h4>YOU are a detective that works to detect anomalies!</h4>
+  <h4>Game is still In Progress</h4>
+  <h2>0.2 - 26/10/2025</h2>
+</div>
+
+<div id="credits" class="hidden">
+  <h2>CREDITS</h2>
+  <p>Developer : Ethan.J.Y (Xturret)</p>
+  <p>Coder : ChatGPT</p>
+  <p>Inspiration : AnalogHorror, Detective, Thatsnotmyneighbour</p>
+  <p>Developers Youtube channel : XTURRET (@bananasuits2710)</p>
+  <button onclick="backToMenu()">BACK</button>
+</div>
+
+<video id="introVideo" class="hidden" autoplay>
+  <source src="intro.mp4" type="video/mp4">
+  Your browser does not support the video tag.
+</video>
+<button id="skipBtn" class="hidden" onclick="skipVideo()">SKIP</button>
+
+<div id="game" class="hidden">
+  <div id="levelText"></div>
+  <div id="storyText"></div>
+  <div class="images">
+    <img id="img1" onclick="choose(0)">
+    <img id="img2" onclick="choose(1)">
+  </div>
+  <div id="feedback" style="margin-top:20px; min-height:24px;"></div>
+  <div style="margin-top:10px;">Score: <span id="score">0</span></div>
+</div>
+
+<div id="end" class="hidden">
+  <h2 id="endTitle"></h2>
+  <p id="endMessage"></p>
+  <button onclick="restart()">RESTART</button>
+</div>
+
+<audio id="menusong" loop src="Menusong.mp3"></audio>
+<audio id="winsong" src="Winsong.mp3"></audio>
+<audio id="losesong" src="Losesong.mp3"></audio>
+<audio id="wrong" src="wrong.mp3"></audio>
+
+<script>
+const levels = [
+  { story: "CASE 1 : A Town people reported a family that acts weirdly in 9pm!", normal:"Human1.jpeg", anomaly:"Ano1.jpeg" },
+  { story: "CASE 2 : A Teacher reported that one of her student acts weirdly this day!", normal:"Human2.jpeg", anomaly:"Ano2.jpeg" },
+  { story: "CASE 3 : A Guy reported one of his friends acting weirdly in 10pm sleepover!", normal:"Human3.jpeg", anomaly:"Ano4.jpeg" },
+  { story: "CASE 4 : A Guy reported he saw a weird beggar with distorted face!", normal:"Human4.jpeg", anomaly:"Ano3.jpeg" },
+  { story: "CASE 5 : A Security reported he saw a nurse that he never saw in 11pm in hallway!", normal:"Human5.jpeg", anomaly:"Ano5.jpeg" }
+];
+
+let current = 0;
+let score = 0;
+let inputLocked = false;
+
+const menusong = document.getElementById("menusong");
+const winsong = document.getElementById("winsong");
+const losesong = document.getElementById("losesong");
+
+menusong.play();
+
+function startGame(){
+  menusong.pause();
+  document.getElementById("menu").classList.add("hidden");
+  const video = document.getElementById("introVideo");
+  const skip = document.getElementById("skipBtn");
+  video.classList.remove("hidden");
+  skip.classList.remove("hidden");
+  video.play();
+
+  video.onended = () => {
+    video.classList.add("hidden");
+    skip.classList.add("hidden");
+    document.getElementById("game").classList.remove("hidden");
+    loadLevel(current);
+  }
+}
+
+function skipVideo(){
+  const video = document.getElementById("introVideo");
+  const skip = document.getElementById("skipBtn");
+  video.pause();
+  video.classList.add("hidden");
+  skip.classList.add("hidden");
+  document.getElementById("game").classList.remove("hidden");
+  loadLevel(current);
+}
+
+function showCredits(){
+  document.getElementById("menu").classList.add("hidden");
+  document.getElementById("credits").classList.remove("hidden");
+}
+
+function backToMenu(){
+  document.getElementById("credits").classList.add("hidden");
+  document.getElementById("menu").classList.remove("hidden");
+  menusong.play();
+}
+
+function loadLevel(n){
+  inputLocked = false;
+  document.getElementById("feedback").textContent = "";
+  document.getElementById("levelText").textContent = `LEVEL ${n+1}/${levels.length}`;
+  document.getElementById("storyText").textContent = levels[n].story;
+
+  const firstIsAnomaly = Math.random() < 0.5;
+  const img1 = document.getElementById("img1");
+  const img2 = document.getElementById("img2");
+
+  if(firstIsAnomaly){
+    img1.src = levels[n].anomaly;
+    img2.src = levels[n].normal;
+    img1.dataset.correct = "true";
+    img2.dataset.correct = "false";
+  }else{
+    img1.src = levels[n].normal;
+    img2.src = levels[n].anomaly;
+    img1.dataset.correct = "false";
+    img2.dataset.correct = "true";
+  }
+}
+
+function choose(index){
+  if(inputLocked) return;
+  inputLocked = true;
+
+  const chosen = document.getElementById(`img${index+1}`);
+  const feedback = document.getElementById("feedback");
+
+  if(chosen.dataset.correct==="true"){
+    feedback.style.color = "#0f0";
+    feedback.textContent = "Correct!";
+    score++;
+  }else{
+    feedback.style.color = "red";
+    feedback.textContent = "Incorrect...";
+    document.getElementById("wrong").play();
+  }
+
+  document.getElementById("score").textContent = score;
+
+  setTimeout(()=>{
+    current++;
+    if(current < levels.length){
+      loadLevel(current);
+    } else {
+      endGame();
+    }
+  }, 1000);
+}
+
+function endGame(){
+  document.getElementById("game").classList.add("hidden");
+  document.getElementById("end").classList.remove("hidden");
+
+  const title = document.getElementById("endTitle");
+  const message = document.getElementById("endMessage");
+
+  menusong.pause();
+  winsong.pause();
+  losesong.pause();
+
+  if(score === 5){
+    title.textContent = "GOOD ENDING";
+    message.textContent = `You scored ${score}/5. All anomalies contained. Humanity survives.`;
+    winsong.play();
+  } else if(score <= 2){
+    title.textContent = "BAD ENDING";
+    message.textContent = `You scored ${score}/5. The anomalies overrun the world.`;
+    losesong.play();
+  } else {
+    title.textContent = "NORMAL ENDING";
+    message.textContent = `You scored ${score}/5. Some anomalies remain. Outcome uncertain.`;
+  }
+}
+
+function restart(){
+  current = 0;
+  score = 0;
+  document.getElementById("score").textContent = score;
+  document.getElementById("end").classList.add("hidden");
+  document.getElementById("menu").classList.remove("hidden");
+  menusong.play();
+}
+</script>
+
+</body>
+</html>
